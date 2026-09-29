@@ -1,15 +1,15 @@
 import json
-from fastapi import FastAPI
+import requests
+import os
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Literal
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-
 from crypto_tools import CRYPTO_TOOLS, ADVANCED_CRYPTO_TOOLS, _normalize_ticker 
-import yfinance as yf # Make sure yfinance is imported in main.py
-from fastapi import HTTPException # Add this to handle errors safely
+import yfinance as yf 
 
 load_dotenv()
 
@@ -39,6 +39,9 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     query: str
 
+# ----------------------------------------------------------------------
+# AI MODEL MARKET ANALYSIS ENDPOINT
+# ----------------------------------------------------------------------
 @app.post("/api/analyze")
 def analyze_market(request: QueryRequest):
     print(f"\n======================================")
@@ -86,7 +89,9 @@ def analyze_market(request: QueryRequest):
     # 3. Send the completed package to the user/frontend
     return final_data
 
-
+# ----------------------------------------------------------------------
+# CANDLE CHART DATA ENDPOINT
+# ----------------------------------------------------------------------
 @app.get("/api/chart/{ticker}")
 def get_chart_data(ticker: str, timeframe: str = "1M"):
     """
@@ -144,3 +149,46 @@ def get_chart_data(ticker: str, timeframe: str = "1M"):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ----------------------------------------------------------------------
+# COIN TABLE DATA ENDPOINT
+# ----------------------------------------------------------------------
+@app.get("/api/top-coins")
+def get_top_coins(limit: int = 50):
+    """
+    Fetches the top cryptocurrencies using the free, keyless CoinPaprika API.
+    Bypasses Indonesian ISP blocks and avoids CoinGecko's strict bot protection.
+    """
+    try:
+        url = "https://api.coinpaprika.com/v1/tickers"
+        
+        # A simple User-Agent header is always good practice
+        headers = {"User-Agent": "Quantitative-Market-Analyst/1.0"}
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # CoinPaprika returns thousands of coins, we just slice the top 50
+        top_coins_data = data[:limit]
+        
+        formatted_coins = []
+        for coin in top_coins_data:
+            usd_data = coin.get("quotes", {}).get("USD", {})
+            
+            formatted_coins.append({
+                "id": coin.get("id"),                 
+                "rank": int(coin.get("rank", 0)),
+                "symbol": coin.get("symbol", "").upper(),     
+                "name": coin.get("name", ""),
+                "price_usd": round(float(usd_data.get("price", 0)), 2),
+                "market_cap_usd": round(float(usd_data.get("market_cap", 0)), 2),
+                "volume_24h_usd": round(float(usd_data.get("volume_24h", 0)), 2),
+                "change_24h_pct": round(float(usd_data.get("percent_change_24h", 0)), 2),
+            })
+            
+        return {"coins": formatted_coins}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch market overview: {str(e)}")
