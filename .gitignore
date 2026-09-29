@@ -1,0 +1,16 @@
+# Security
+.env
+
+# Python Virtual Environment
+myenv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Node Modules (for your React frontend)
+frontend/node_modules/
+frontend/dist/
+
+# OS Files
+.DS_Store
