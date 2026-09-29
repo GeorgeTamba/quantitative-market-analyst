@@ -7,7 +7,6 @@ from google.genai import types
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-# Change your import at the top of main.py to include _normalize_ticker
 from crypto_tools import CRYPTO_TOOLS, ADVANCED_CRYPTO_TOOLS, _normalize_ticker 
 import yfinance as yf # Make sure yfinance is imported in main.py
 from fastapi import HTTPException # Add this to handle errors safely
