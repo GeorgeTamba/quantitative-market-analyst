@@ -122,35 +122,37 @@ def analyze_market(request: QueryRequest):
 # CANDLE CHART DATA ENDPOINT
 # ----------------------------------------------------------------------
 @app.get("/api/chart/{ticker}")
-def get_chart_data(ticker: str, timeframe: str = "1M"):
+def get_chart_data(ticker: str, timeframe: str = "1D"):
     """
     Fetches raw OHLCV candlestick data for the TradingView frontend chart.
-    Timeframes: 1D (5-min intervals), 1W (1-hour), 1M (1-day), 1Y (1-day)
+    Timeframes now represent the CANDLE SIZE (TradingView style).
     """
     try:
         symbol = _normalize_ticker(ticker)
         timeframe = timeframe.upper()
         
-        # 1. Map the frontend buttons to Yahoo Finance intervals
-        if timeframe == "1D":
-            period = "1d"
-            interval = "5m"
-        elif timeframe == "1W":
-            period = "7d"
+        # 1. Map frontend buttons to Yahoo Finance intervals (Candle Size)
+        if timeframe == "15M":
+            period = "5d"       # 5 days total of 15-minute candles
+            interval = "15m"
+        elif timeframe == "1H":
+            period = "1mo"      # 1 month total of 1-hour candles
             interval = "1h"
-        elif timeframe == "1M":
-            period = "1mo"
+        elif timeframe == "1D":
+            period = "2y"       # 2 years total of 1-day candles
             interval = "1d"
-        elif timeframe == "1Y":
-            period = "1y"
-            interval = "1d"
+        elif timeframe == "1W":
+            period = "5y"       # 5 years total of 1-week candles
+            interval = "1wk"
         else:
-            period = "1mo"
+            period = "2y"
             interval = "1d"
             
         # 2. Fetch the data
         tk = yf.Ticker(symbol)
         df = tk.history(period=period, interval=interval)
+        
+        # ... (the rest of the function stays exactly the same!) ...
         
         if df.empty:
             raise HTTPException(status_code=404, detail=f"No chart data found for {symbol}")

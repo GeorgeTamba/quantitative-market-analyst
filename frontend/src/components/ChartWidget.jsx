@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { createChart, ColorType, CandlestickSeries } from 'lightweight-charts';
 import { LineChart, Loader2 } from 'lucide-react';
 
-// 1. Accept ticker and setTicker as props from App.jsx!
 export default function ChartWidget({ ticker, setTicker }) {
   const chartContainerRef = useRef();
   const [isLoading, setIsLoading] = useState(false);
-  // (We deleted the local const [ticker, setTicker] = useState('BTC-USD') from here)
+  
+  // 1. Change the default timeframe to 1 Day candles
+  const [timeframe, setTimeframe] = useState('1D'); 
 
   useEffect(() => {
+    const isIntraday = timeframe === '15M' || timeframe === '1H';
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -17,6 +19,10 @@ export default function ChartWidget({ ticker, setTicker }) {
       grid: {
         vertLines: { color: '#1e293b' }, 
         horzLines: { color: '#1e293b' },
+      },
+      timeScale: {
+        timeVisible: isIntraday,
+        secondsVisible: false,
       },
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
@@ -33,7 +39,8 @@ export default function ChartWidget({ ticker, setTicker }) {
     const fetchChartData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`http://127.0.0.1:8000/api/chart/${ticker}`);
+        // 2. NEW: Append the active timeframe to the Python API URL
+        const response = await fetch(`http://127.0.0.1:8000/api/chart/${ticker}?timeframe=${timeframe}`);
         const json = await response.json();
         
         if (json.data) {
@@ -61,18 +68,40 @@ export default function ChartWidget({ ticker, setTicker }) {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [ticker]); 
+  // 3. NEW: Add 'timeframe' to this array so React redraws the chart when a button is clicked
+  }, [ticker, timeframe]); 
 
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-between mb-4">
+        
+        {/* Left Side: Title & Loader */}
         <div className="flex items-center gap-2">
           <LineChart className="text-blue-500 w-5 h-5" />
           <h2 className="text-lg font-semibold text-white">Market Chart</h2>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-500 ml-2" />}
         </div>
         
-        <div className="flex items-center gap-2">
-          {/* 2. The input box still works because it calls the setTicker function passed from App.jsx */}
+        {/* Right Side: Controls */}
+        <div className="flex items-center gap-3">
+          
+          {/* NEW: Timeframe Toggle Buttons */}
+          <div className="flex bg-slate-950 rounded-md p-1 border border-slate-800">
+            {['15M', '1H', '1D', '1W'].map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                  timeframe === tf 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+
           <input 
             type="text" 
             value={ticker}
@@ -80,7 +109,6 @@ export default function ChartWidget({ ticker, setTicker }) {
             placeholder="e.g. BTC-USD"
             className="bg-slate-950 border border-slate-700 rounded-md px-3 py-1 text-sm text-white focus:outline-none focus:border-blue-500 w-32"
           />
-          {isLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
         </div>
       </div>
 
