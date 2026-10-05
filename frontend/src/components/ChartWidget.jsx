@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-// Notice we now import CandlestickSeries specifically
 import { createChart, ColorType, CandlestickSeries } from 'lightweight-charts';
 import { LineChart, Loader2 } from 'lucide-react';
 
-export default function ChartWidget() {
+// 1. Accept ticker and setTicker as props from App.jsx!
+export default function ChartWidget({ ticker, setTicker }) {
   const chartContainerRef = useRef();
-  const [ticker, setTicker] = useState('BTC-USD'); 
   const [isLoading, setIsLoading] = useState(false);
+  // (We deleted the local const [ticker, setTicker] = useState('BTC-USD') from here)
 
   useEffect(() => {
-    // A. Initialize the TradingView Chart Canvas
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -23,7 +22,6 @@ export default function ChartWidget() {
       height: chartContainerRef.current.clientHeight,
     });
 
-    // B. Create the Candlestick Series (NEW VERSION 5 SYNTAX)
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',      
       downColor: '#ef4444',    
@@ -32,7 +30,6 @@ export default function ChartWidget() {
       wickDownColor: '#ef4444',
     });
 
-    // C. Fetch Data from your Python Backend
     const fetchChartData = async () => {
       setIsLoading(true);
       try {
@@ -52,7 +49,6 @@ export default function ChartWidget() {
 
     fetchChartData();
 
-    // D. Make it Responsive
     const handleResize = () => {
       chart.applyOptions({
         width: chartContainerRef.current.clientWidth,
@@ -61,7 +57,6 @@ export default function ChartWidget() {
     };
     window.addEventListener('resize', handleResize);
 
-    // E. Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
@@ -77,6 +72,7 @@ export default function ChartWidget() {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* 2. The input box still works because it calls the setTicker function passed from App.jsx */}
           <input 
             type="text" 
             value={ticker}

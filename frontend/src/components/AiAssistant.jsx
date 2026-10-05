@@ -1,40 +1,36 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, Loader2 } from 'lucide-react';
 
-export default function AiAssistant() {
-  // 1. Chat State: We start with one greeting message from the AI
+// 1. We added props to accept commands from the outside (App.jsx)
+export default function AiAssistant({ externalQuery, onQueryProcessed }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hello! I am your quantitative AI assistant. Ask me to analyze any coin, compare metrics, or explain market trends.' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  // 2. Auto-scroll reference
   const messagesEndRef = useRef(null);
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Run auto-scroll every time the 'messages' array changes
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // 3. Handle sending the message to your Python Backend
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const userMessage = input.trim();
+  // 2. We modified this function to accept custom text, not just form events
+  const handleSendMessage = async (e, customText = null) => {
+    if (e) e.preventDefault();
     
-    // Add user message to UI immediately and clear input
+    const userMessage = customText || input.trim();
+    if (!userMessage) return;
+    
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setInput('');
+    if (!customText) setInput(''); // Only clear input if user typed it
     setIsLoading(true);
 
     try {
-      // Send to FastAPI (Make sure your backend expects {"query": "text"} in the body)
       const response = await fetch('http://127.0.0.1:8000/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,8 +38,6 @@ export default function AiAssistant() {
       });
       
       const data = await response.json();
-      
-      // We look for 'response' or 'result' depending on how you built your Python dict
       const aiText = data.response || data.result || data.message || JSON.stringify(data);
       
       setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
@@ -55,35 +49,41 @@ export default function AiAssistant() {
     }
   };
 
+  // 3. This listens for clicks from the Market Screener table
+  useEffect(() => {
+    if (externalQuery) {
+      // setTimeout pushes the state updates to the next tick, safely bypassing the cascading render warning
+      setTimeout(() => {
+        handleSendMessage(null, externalQuery);
+        onQueryProcessed(); 
+      }, 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalQuery]);
+
   return (
     <div className="flex flex-col h-full w-full">
-      
-      {/* Header */}
       <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-800 shrink-0">
         <Bot className="text-blue-500 w-6 h-6" />
         <h2 className="text-lg font-semibold text-white">Quant AI</h2>
       </div>
 
-      {/* Chat Messages History Area */}
       <div className="flex-1 overflow-y-auto min-h-0 pr-2 flex flex-col gap-4">
         {messages.map((msg, idx) => (
           <div 
             key={idx} 
             className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
           >
-            {/* Avatar Icon */}
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-blue-600' : 'bg-slate-700'}`}>
               {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-blue-400" />}
             </div>
             
-            {/* Text Bubble */}
             <div className={`p-3 rounded-lg text-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none whitespace-pre-wrap'}`}>
               {msg.content}
             </div>
           </div>
         ))}
         
-        {/* Loading Indicator for AI thinking */}
         {isLoading && (
           <div className="flex gap-3 max-w-[85%]">
             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
@@ -96,11 +96,9 @@ export default function AiAssistant() {
           </div>
         )}
         
-        {/* Invisible div to scroll to */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Form at the bottom */}
       <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-slate-800 shrink-0 flex gap-2">
         <input
           type="text"
@@ -118,7 +116,6 @@ export default function AiAssistant() {
           <Send className="w-4 h-4" />
         </button>
       </form>
-      
     </div>
   );
 }
