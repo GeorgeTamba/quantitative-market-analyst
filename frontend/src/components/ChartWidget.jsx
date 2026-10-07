@@ -40,7 +40,7 @@ export default function ChartWidget({ ticker, setTicker }) {
       setIsLoading(true);
       try {
         // 2. NEW: Append the active timeframe to the Python API URL
-        const response = await fetch(`http://127.0.0.1:8000/api/chart/${ticker}?timeframe=${timeframe}`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chart/${ticker}?timeframe=${timeframe}`);
         const json = await response.json();
         
         if (json.data) {

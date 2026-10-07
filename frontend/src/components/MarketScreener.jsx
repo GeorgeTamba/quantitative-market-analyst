@@ -9,7 +9,7 @@ export default function MarketScreener({ onAnalyze }) {
   useEffect(() => {
     const fetchCoins = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/top-coins');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/top-coins`);
         const json = await response.json();
         if (json.coins) {
           setCoins(json.coins);
