@@ -45,14 +45,14 @@ The Gemini model accesses an integrated suite of 8 quantitative tools implemente
 
 | Tool | Function Name | Purpose |
 | :--- | :--- | :--- |
-| **Price Action & OHLCV** | `get_current_price` | Retrieves spot price, 24h high/low, and volume metrics. |
-| **Trend Identification** | `calculate_moving_averages` | Evaluates short-term and long-term trend alignment using 20/50/200 SMAs and EMAs. |
-| **Momentum Gauge** | `calculate_rsi` | Computes 14-period Relative Strength Index to detect overbought and oversold divergence. |
-| **Trend Convergence** | `calculate_macd` | Evaluates MACD line, signal line, and histogram momentum crossovers. |
-| **Volatility Bands** | `calculate_bollinger_bands` | Analyzes price dispersion, band squeezes, and standard deviation breakouts. |
-| **Volatility & Risk** | `calculate_atr` | Measures Average True Range to benchmark stop-loss thresholds and current volatility. |
-| **Key Levels** | `get_support_resistance` | Identifies historical swing highs, swing lows, and liquidity zones. |
-| **Risk / Reward Modeling**| `evaluate_risk_reward` | Computes theoretical risk-to-reward ratios and expected value metrics for trade setups. |
+| **Technical Indicators** | `get_technical_indicators` | Computes the 50-day SMA and 14-period RSI (overbought/oversold signal), determines the SMA-50 trend direction, and summarizes period open/high/low and average daily volume. |
+| **Market Sentiment** | `get_market_sentiment` | Fetches the latest news headlines from Yahoo Finance and the Alternative.me Crypto Fear & Greed Index. |
+| **Fundamental Data** | `get_fundamental_data` | Retrieves price, market cap, 24h volume, and circulating supply, then assesses liquidity via the volume-to-market-cap ratio. |
+| **Historical Performance** | `get_historical_performance` | Calculates 7-day, 30-day, and year-to-date returns, benchmarked against Bitcoin (BTC) to flag outperformance or underperformance. |
+| **Derivatives Data** | `get_derivatives_data` | Analyzes perpetual futures data (Binance, with Bybit fallback): funding rates, open interest, long/short ratio, and long/short squeeze risk. |
+| **On-Chain Metrics** | `get_onchain_metrics` | Gathers on-chain and DeFi activity (TVL, DEX volume, fees, stablecoin supply, network activity) from DefiLlama, Blockchain.com, and Blockchair. |
+| **Support & Resistance** | `get_support_resistance_levels` | Calculates daily/weekly pivot points and Fibonacci retracement/extension levels to identify the nearest supports and resistances. |
+| **Asset Correlation** | `get_asset_correlation` | Measures correlation and beta of an asset's daily returns against a benchmark (BTC by default, or S&P 500, Gold, DXY, etc.), including downside-day behavior. |
 
 ---
 
@@ -65,5 +65,5 @@ The Gemini model accesses an integrated suite of 8 quantitative tools implemente
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/your-username/Quantitative-Market-Analyst.git](https://github.com/your-username/Quantitative-Market-Analyst.git)
-cd Quantitative-Market-Analyst
+git clone https://github.com/GeorgeTamba/quantitative-market-analyst.git
+cd quantitative-market-analyst
