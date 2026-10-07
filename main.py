@@ -1,6 +1,7 @@
 import json
 import requests
 import os
+import time # <-- Added for caching
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Literal
@@ -10,10 +11,18 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from crypto_tools import CRYPTO_TOOLS, ADVANCED_CRYPTO_TOOLS, _normalize_ticker 
 import yfinance as yf 
+import logging
 
 load_dotenv()
 
-# 2. The Blueprint
+# Configure the logger
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# The Blueprint
 class TechnicalAssessment(BaseModel):
     ticker: str
     current_price: float
@@ -24,13 +33,24 @@ class TechnicalAssessment(BaseModel):
     key_observations: list[str]
     disclaimer: str # <--- Add this field
 
-# 3. Initialize Web Server and AI
+# Initialize Web Server and AI
 app = FastAPI()
 client = genai.Client()
 
+# Dynamically build the allowed origins list
+origins = [
+    "http://localhost:5173",  # Always allow your local laptop
+]
+
+# Check if we are running in the cloud and have a live frontend URL
+live_frontend_url = os.getenv("FRONTEND_URL")
+if live_frontend_url:
+    origins.append(live_frontend_url)
+
+# Apply the security rules
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=origins, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,7 +65,7 @@ class QueryRequest(BaseModel):
 @app.post("/api/analyze")
 def analyze_market(request: QueryRequest):
     print(f"\n======================================")
-    print(f"Incoming user query: {request.query}")
+    logger.info(f"Incoming user query: {request.query}")
     
     all_tools = CRYPTO_TOOLS + ADVANCED_CRYPTO_TOOLS
     
@@ -152,8 +172,6 @@ def get_chart_data(ticker: str, timeframe: str = "1D"):
         tk = yf.Ticker(symbol)
         df = tk.history(period=period, interval=interval)
         
-        # ... (the rest of the function stays exactly the same!) ...
-        
         if df.empty:
             raise HTTPException(status_code=404, detail=f"No chart data found for {symbol}")
             
@@ -182,34 +200,45 @@ def get_chart_data(ticker: str, timeframe: str = "1D"):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ----------------------------------------------------------------------
-# COIN TABLE DATA ENDPOINT
+# COIN TABLE DATA ENDPOINT (WITH CACHING)
 # ----------------------------------------------------------------------
+# 1. Create a memory dictionary to hold the cached data
+market_cache = {
+    "data": None,
+    "last_fetched": 0
+}
+CACHE_DURATION = 300  # 300 seconds = 5 minutes
+
 @app.get("/api/top-coins")
 def get_top_coins(limit: int = 50):
     """
     Fetches the top cryptocurrencies using the free, keyless CoinPaprika API.
-    Bypasses Indonesian ISP blocks and avoids CoinGecko's strict bot protection.
+    Includes a 5-minute cache to prevent rate-limiting in production.
     """
-    try:
-        url = "https://api.coinpaprika.com/v1/tickers"
+    current_time = time.time()
+    
+    # 2. Check if we have fresh data in the cache
+    if market_cache["data"] and (current_time - market_cache["last_fetched"] < CACHE_DURATION):
+        logger.info("Serving market data from cache!")
+        return {"coins": market_cache["data"]}
         
-        # A simple User-Agent header is always good practice
+    # 3. If cache is empty or old, fetch new data from the API
+    try:
+        logger.info("Fetching fresh market data from CoinPaprika API...")
+        url = "https://api.coinpaprika.com/v1/tickers"
         headers = {"User-Agent": "Quantitative-Market-Analyst/1.0"}
         
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
         data = response.json()
-        
-        # CoinPaprika returns thousands of coins, we just slice the top 50
         top_coins_data = data[:limit]
         
         formatted_coins = []
         for coin in top_coins_data:
             usd_data = coin.get("quotes", {}).get("USD", {})
-            
             formatted_coins.append({
-                "id": coin.get("id"),                 
+                "id": coin.get("id"),                
                 "rank": int(coin.get("rank", 0)),
                 "symbol": coin.get("symbol", "").upper(),     
                 "name": coin.get("name", ""),
@@ -219,7 +248,16 @@ def get_top_coins(limit: int = 50):
                 "change_24h_pct": round(float(usd_data.get("percent_change_24h", 0)), 2),
             })
             
+        # 4. Save the new formatted data into the cache memory
+        market_cache["data"] = formatted_coins
+        market_cache["last_fetched"] = current_time
+            
         return {"coins": formatted_coins}
         
     except Exception as e:
+        # 5. Fallback: If CoinPaprika API fails, try to serve the old cache data instead of crashing
+        if market_cache["data"]:
+            logger.warning(f"API failed, falling back to old cache. Error: {str(e)}")
+            return {"coins": market_cache["data"]}
+            
         raise HTTPException(status_code=500, detail=f"Failed to fetch market overview: {str(e)}")
