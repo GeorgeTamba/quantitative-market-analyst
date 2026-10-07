@@ -104,7 +104,7 @@ export default function AiAssistant({ externalQuery, onQueryProcessed }) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask Gemini to analyze a coin..."
+          placeholder="Ask Quant AI to analyze a coin..."
           className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
           disabled={isLoading}
         />
